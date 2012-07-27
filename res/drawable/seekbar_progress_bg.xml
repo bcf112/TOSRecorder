@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android" >
+    <item>
+        <clip>
+            <nine-patch
+                xmlns:android="http://schemas.android.com/apk/res/android"
+                android:dither="true"
+                android:src="@drawable/seekbar_fill" />
+        </clip>
+    </item>
+</layer-list>

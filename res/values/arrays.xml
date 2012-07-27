@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string-array name="part">
+		<item>[Part1] 1,2</item>
+		<item>[Part2] 3</item>
+		<item>[Part3] 4,5</item>
+		<item>[Part3] 6</item>
+		<item>[Part4] 7,8</item>
+		<item>[Part4] 9</item>
+		<item>[Part5] 10</item>
+		<item>[Part6] 11</item>
+	</string-array>
+</resources>
