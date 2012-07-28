@@ -101,7 +101,8 @@
         android:layout_width="match_parent"
         android:layout_height="60dp"
         android:background="@drawable/recording_part"
-        android:prompt="@string/choose_part" />
+        android:prompt="@string/choose_part"
+        android:spinnerMode="dialog" />
 
     <ImageView
         android:layout_marginTop="20dp"

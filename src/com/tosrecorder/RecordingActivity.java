@@ -4,18 +4,17 @@ import java.io.*;
 import java.text.*;
 import java.util.*;
 
+import com.actionbarsherlock.app.*;
+
 import android.app.*;
-import android.content.Intent;
+import android.content.*;
 import android.media.*;
-import android.net.Uri;
 import android.os.*;
 import android.view.*;
 import android.widget.*;
 import android.widget.AdapterView.OnItemSelectedListener;
 
-// Client ID : 2f2cZ0QT1381df82293
-
-public class RecordingActivity extends Activity {
+public class RecordingActivity extends SherlockActivity {
 	TextView mPrepareTime;
 	ProgressBar mPrepareProgress;
 	TextView mResponseTime;
@@ -42,7 +41,8 @@ public class RecordingActivity extends Activity {
 	ArrayList<PartInfo> partSpinnerList;
 
 	ProgressDialog mProgressDialog;
-	String sd;
+
+	String songTitle;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -61,14 +61,26 @@ public class RecordingActivity extends Activity {
 		mRecordButton = (ImageView) findViewById(R.id.recording_record);
 		mPartSpinner = (Spinner) findViewById(R.id.recording_spinner);
 
-		sd = Environment.getExternalStorageDirectory().getAbsolutePath();
 		mSoundPool = new SoundPool(1, AudioManager.STREAM_MUSIC, 0);
 		loudBeep = mSoundPool.load(this, R.raw.beep, 1);
 
+		if (!Environment.getExternalStorageState().equals(
+				Environment.MEDIA_MOUNTED)) {
+			Toast.makeText(getApplicationContext(), "SD카드가 필요합니다.",
+					Toast.LENGTH_LONG).show();
+			finish();
+		}
+
 		File dir = new File(Environment.getExternalStorageDirectory()
 				.getAbsolutePath(), "TOSRecorder");
-		if (!dir.exists()) {
-			dir.mkdirs();
+
+		if (!(dir.exists())) {
+			if (!(dir.mkdirs())) {
+				Toast.makeText(getApplicationContext(),
+						"SD카드에 TOSRecorder 폴더를 수동으로 생성해주시기 바랍니다.",
+						Toast.LENGTH_LONG).show();
+				finish();
+			}
 		}
 
 		// 파일 명을 저장하기 위한 현재 날짜를 미리 세팅
@@ -95,9 +107,10 @@ public class RecordingActivity extends Activity {
 			public void onClick(View v) {
 				if (!isRecordBtnClicked) {
 					Date today = new Date();
-					String songTitle = partname + date.format(today)
+					songTitle = partname + date.format(today)
 							+ time.format(today) + ".amr";
-					Path = sd + "/TOSRecorder/" + songTitle;
+					Path = Environment.getExternalStorageDirectory()
+							.getAbsolutePath() + "/TOSRecorder/" + songTitle;
 
 					mRecorder.reset();
 					setRecorderConfig(mRecorder);
@@ -111,10 +124,6 @@ public class RecordingActivity extends Activity {
 				} else {
 					if (!prepareStatus) {
 						mRecorder.stop();
-						sendBroadcast(new Intent(Intent.ACTION_MEDIA_MOUNTED,
-								Uri.parse("file://"
-										+ Environment
-												.getExternalStorageDirectory())));
 					}
 					mTimerHandler.removeMessages(0);
 
@@ -160,6 +169,33 @@ public class RecordingActivity extends Activity {
 		if (mProgressDialog != null) {
 			mProgressDialog.dismiss();
 		}
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(com.actionbarsherlock.view.Menu menu) {
+		getSupportMenuInflater().inflate(R.menu.menu, menu);
+		return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(
+			com.actionbarsherlock.view.MenuItem item) {
+		switch (item.getItemId()) {
+		case R.id.item_record:
+			break;
+
+		case R.id.item_list:
+			Intent intent = new Intent(getApplicationContext(),
+					PlayListActivity.class);
+			intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
+					| Intent.FLAG_ACTIVITY_NEW_TASK);
+			startActivity(intent);
+			break;
+
+		default:
+			return false;
+		}
+		return true;
 	}
 
 	void setRecorderConfig(MediaRecorder recorder) {
@@ -323,9 +359,6 @@ public class RecordingActivity extends Activity {
 				mRecorder.stop();
 
 				mPartSpinner.setClickable(true);
-				sendBroadcast(new Intent(Intent.ACTION_MEDIA_MOUNTED,
-						Uri.parse("file://"
-								+ Environment.getExternalStorageDirectory())));
 
 				Toast.makeText(RecordingActivity.this, "시간이 종료되었습니다",
 						Toast.LENGTH_SHORT).show();

@@ -3,19 +3,20 @@ package com.tosrecorder;
 import java.util.*;
 import java.io.*;
 
+import com.actionbarsherlock.app.*;
+import com.actionbarsherlock.view.Menu;
+import com.actionbarsherlock.view.MenuItem;
+
 import net.daum.adam.publisher.*;
 import net.daum.adam.publisher.AdView.*;
 import net.daum.adam.publisher.impl.*;
 
 import android.app.*;
 import android.content.*;
-import android.database.*;
 import android.media.*;
 import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnSeekCompleteListener;
-import android.net.*;
 import android.os.*;
-import android.provider.*;
 import android.text.format.DateFormat;
 import android.util.*;
 import android.view.*;
@@ -25,14 +26,13 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 
-public class PlayListActivity extends Activity {
+public class PlayListActivity extends SherlockActivity {
 	public static final int DIALOG_DELETE_CHECK = 1001;
 
 	boolean wasPlaying;
 	int selectedPosition;
 	SeekBar mPlaySeekbar;
 
-	Cursor mCursor;
 	ArrayList<RecordingInfo> mRecordingList;
 	MediaPlayer mPlayer;
 	ListView mPlayList;
@@ -151,8 +151,6 @@ public class PlayListActivity extends Activity {
 
 		mPlayList.setAdapter(mPlayListAdapter);
 		mPlayList.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-		setRegisterReceiver();
-
 		updateSongList();
 	}
 
@@ -172,9 +170,33 @@ public class PlayListActivity extends Activity {
 			adView.destroy();
 			adView = null;
 		}
-
 		mProgressHandler.removeMessages(0);
-		unregisterReceiver(mScanReceiver);
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		getSupportMenuInflater().inflate(R.menu.menu, menu);
+		return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+		case R.id.item_record:
+			Intent intent = new Intent(getApplicationContext(),
+					RecordingActivity.class);
+			intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
+					| Intent.FLAG_ACTIVITY_NEW_TASK);
+			startActivity(intent);
+			break;
+
+		case R.id.item_list:
+			break;
+
+		default:
+			return false;
+		}
+		return true;
 	}
 
 	private void initAdam() {
@@ -216,22 +238,6 @@ public class PlayListActivity extends Activity {
 		adView.setAnimationType(AnimationType.FLIP_HORIZONTAL);
 		adView.setVisibility(View.VISIBLE);
 	}
-
-	void setRegisterReceiver() {
-		IntentFilter intentFilter = new IntentFilter();
-		intentFilter.addAction(Intent.ACTION_MEDIA_SCANNER_FINISHED);
-		intentFilter.addDataScheme("file");
-		registerReceiver(mScanReceiver, intentFilter);
-	}
-
-	BroadcastReceiver mScanReceiver = new BroadcastReceiver() {
-
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			mRecordingList.clear();
-			updateSongList();
-		}
-	};
 
 	/**
 	 * 녹음 파일을 미디어 플레이어에 지정
@@ -311,11 +317,8 @@ public class PlayListActivity extends Activity {
 							new File(
 									mRecordingList.get(selectedPosition).filePath)
 									.delete();
-							sendBroadcast(new Intent(
-									Intent.ACTION_MEDIA_MOUNTED,
-									Uri.parse("file://"
-											+ Environment
-													.getExternalStorageDirectory())));
+							mRecordingList.clear();
+							updateSongList();
 						}
 					});
 
@@ -327,13 +330,7 @@ public class PlayListActivity extends Activity {
 			alertDialog = builder.create();
 			return alertDialog;
 		}
-
-		return super.onCreateDialog(id);
-	}
-
-	@Override
-	protected void onPrepareDialog(int id, Dialog dialog) {
-		super.onPrepareDialog(id, dialog);
+		return null;
 	}
 
 	class LoadRecordingTask extends AsyncTask<String, Integer, String> {
@@ -348,33 +345,23 @@ public class PlayListActivity extends Activity {
 		protected String doInBackground(String... arg0) {
 			mRecordingList.clear();
 
-			String[] mCursorCols = new String[] { MediaStore.Audio.Media.TITLE,
-					MediaStore.Audio.Media.DURATION,
-					MediaStore.Audio.Media.DATA };
-
-			mCursor = getContentResolver().query(
-					MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, mCursorCols,
-					"album='TOSRecorder'", null, null);
-
-			if(mCursor==null){
-				return null;
-			}
+			File dir = new File(Environment.getExternalStorageDirectory()
+					.getAbsolutePath(), "TOSRecorder");
 			
-			if (!(mCursor.getCount() == 0)) {
-				mCursor.moveToFirst();
+			if (dir.listFiles(new AMRFilter()).length > 0) {
+				for (File file : dir.listFiles(new AMRFilter())) {
+					MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+					mmr.setDataSource(file.getPath());
 
-				for (int i = 0; i < mCursor.getCount(); i++) {
 					RecordingInfo info = new RecordingInfo();
-					info.title = mCursor.getString(0);
-					String convertedDuration = mCursor.getString(1);
+					info.title = file.getName().replace(".amr", "");
 					info.duration = convertMilsToMS(Long
-							.parseLong(convertedDuration));
-					info.filePath = mCursor.getString(2);
+							.valueOf(mmr
+									.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)));
+					info.filePath = file.getPath();
 					mRecordingList.add(info);
-					mCursor.moveToNext();
 				}
 			}
-
 			return null;
 		}
 
@@ -384,5 +371,14 @@ public class PlayListActivity extends Activity {
 			mPlayListAdapter.notifyDataSetChanged();
 			mProgressDialog.hide();
 		}
+	}
+	
+	class AMRFilter implements FilenameFilter{
+
+		@Override
+		public boolean accept(File dir, String filename) {
+			return filename.endsWith(".amr");
+		}
+		
 	}
 }
